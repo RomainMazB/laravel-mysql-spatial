@@ -296,4 +296,32 @@ trait SpatialTrait
     {
         return $this->scopeOrderBySpatial($query, $geometryColumn, $geometry, 'distance_sphere', $direction);
     }
+
+    public static function bootSpatialTrait()
+    {
+        static::saving(function (Model $model) {
+            foreach ($model->attributes as $key => $value) {
+                if ($value instanceof GeometryInterface) {
+                    $model->geometries[$key] = $value; //Preserve the geometry objects prior to the insert
+                    $model->attributes[$key] = new SpatialExpression($value);
+                }
+            }
+        });
+
+        static::creating(function (Model $model) {
+            foreach ($model->attributes as $key => $value) {
+                if ($value instanceof GeometryInterface) {
+                    $model->geometries[$key] = $value; //Preserve the geometry objects prior to the insert
+                    $model->attributes[$key] = new SpatialExpression($value);
+                }
+            }
+        });
+
+        $saved = function (Model $model) {
+            $model->attributes = array_merge($model->attributes, $model->geometries);
+        };
+
+        static::saved($saved);
+        static::created($saved);
+    }
 }
